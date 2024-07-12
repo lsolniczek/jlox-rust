@@ -21,12 +21,12 @@ pub enum TokenType {
 #[derive(Debug)]
 pub struct Token {
     token_type: TokenType,
-    lexeme: String,
+    lexeme: Option<String>,
     line: usize,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, line: usize) -> Self {
+    pub fn new(token_type: TokenType, lexeme: Option<String>, line: usize) -> Self {
         Self {
             token_type,
             lexeme,
@@ -37,6 +37,10 @@ impl Token {
 
 impl Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} {} {}", self.token_type, self.lexeme, self.line)
+        let lexeme_value = match &self.lexeme {
+            Some(value) => value,
+            None => "",
+        };
+        write!(f, "{:?} {} {}", self.token_type, lexeme_value, self.line)
     }
 }

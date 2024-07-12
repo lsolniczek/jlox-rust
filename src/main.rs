@@ -38,7 +38,7 @@ fn run_prompt() {
 }
 
 fn run(source: &str) {
-    let scanner = Scanner::new(source);
+    let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens();
 
     for token in tokens.iter().enumerate() {

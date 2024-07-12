@@ -1,5 +1,5 @@
-use std::io::{stdout, BufRead, Write};
-use std::{env, fs, io, process};
+use std::io::Write;
+use std::{env, fs, io};
 use std::path::PathBuf;
 use scanner::Scanner;
 

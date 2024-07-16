@@ -1,7 +1,7 @@
 use core::fmt;
-use std::fmt::{Debug, Display};
+use std::{fmt::{Debug, Display}, str::FromStr};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TokenType {
     // single-character tokens
     LeftParen, RightParen, LeftBrace, RightBrace, Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
@@ -16,6 +16,32 @@ pub enum TokenType {
     And, Class, Else, False, Fun, For, If, Nil, Or, Print, Return, Super, This, True, Var, While, 
 
     Eof,
+}
+
+impl FromStr for TokenType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "and"   => Ok(TokenType::And),
+            "class" => Ok(TokenType::Class),
+            "else"  => Ok(TokenType::Else),
+            "false" => Ok(TokenType::False),
+            "for"   => Ok(TokenType::For),
+            "fun"   => Ok(TokenType::Fun),
+            "if"    => Ok(TokenType::If),
+            "nil"   => Ok(TokenType::Nil),
+            "or"    => Ok(TokenType::Or),
+            "print" => Ok(TokenType::Print),
+            "return"=> Ok(TokenType::Return),
+            "super" => Ok(TokenType::Super),
+            "this"  => Ok(TokenType::This),
+            "true"  => Ok(TokenType::True),
+            "var"   => Ok(TokenType::Var),
+            "while" => Ok(TokenType::While),
+            _ => Err(()),
+        }        
+    }
 }
 
 #[derive(Debug)]

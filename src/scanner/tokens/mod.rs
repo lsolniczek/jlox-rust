@@ -39,7 +39,7 @@ impl FromStr for TokenType {
             "true"  => Ok(TokenType::True),
             "var"   => Ok(TokenType::Var),
             "while" => Ok(TokenType::While),
-            _ => Err(()),
+            _       => Err(()),
         }        
     }
 }

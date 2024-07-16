@@ -1,5 +1,5 @@
-use std::str::FromStr;
-
+use std::{error::Error, fmt::{Debug, Display}, str::FromStr};
+use std::fmt;
 use tokens::{TokenType, Token};
 
 pub mod tokens;
@@ -40,11 +40,11 @@ impl<'a> Scanner<'a> {
         self.source.chars().nth(index).unwrap()
     }
 
-    fn scan_token(&mut self, tokens: &mut Vec<Token>) {
+    fn scan_token(&mut self) -> Result<TokenType, ScannerError> {
         let char = self.advance();
         match char {
-            '(' => self.add_token(TokenType::LeftParen, tokens),
-            ')' => self.add_token(TokenType::RightParen, tokens),
+            '(' => Ok(TokenType::LeftParen),
+            ')' => Ok(TokenType::RightParen),
             '{' => self.add_token(TokenType::LeftBrace, tokens),
             '}' => self.add_token(TokenType::RightBrace, tokens),
             ',' => self.add_token(TokenType::Comma, tokens),
@@ -114,6 +114,11 @@ impl<'a> Scanner<'a> {
                 }
             }
         }
+    }
+
+    fn create_token(&self, token_type: TokenType) -> Token {
+        let text = self.source[self.start..self.current].to_string();
+        Token::new(token_type, Some(text), self.line)
     }
 
     fn add_token(&self, token_type: TokenType, tokens: &mut Vec<Token>) {
@@ -198,5 +203,17 @@ impl<'a> Scanner<'a> {
         let number_value = self.source[self.start..self.current].to_string().parse::<f64>().unwrap();
         return TokenType::Number(number_value);
 
+    }
+}
+
+#[derive(Debug)]
+pub struct ScannerError {
+    source: char,
+}
+
+impl Error for ScannerError {}
+impl Display for ScannerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} has something wrong", self.source)
     }
 }

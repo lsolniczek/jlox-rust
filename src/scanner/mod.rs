@@ -27,7 +27,19 @@ impl<'a> Scanner<'a> {
 
         while !self.is_at_end() {
             self.start = self.current;
-            self.scan_token(&mut tokens);
+            match self.scan_token() {
+                ScanningResult::Token(token) => {
+                    self.add_token(token, &mut tokens)
+                },
+                ScanningResult::Error(error) => {
+                    println!("{}", error);
+                    break;
+                },
+                ScanningResult::NewLine => {
+                    self.line += 1
+                },
+                ScanningResult::Skip => continue
+            }
         }
 
         tokens.push(Token::new(TokenType::Eof, None, self.line));
@@ -40,86 +52,65 @@ impl<'a> Scanner<'a> {
         self.source.chars().nth(index).unwrap()
     }
 
-    fn scan_token(&mut self) -> Result<TokenType, ScannerError> {
+    fn scan_token(&mut self) -> ScanningResult {
         let char = self.advance();
         match char {
-            '(' => Ok(TokenType::LeftParen),
-            ')' => Ok(TokenType::RightParen),
-            '{' => self.add_token(TokenType::LeftBrace, tokens),
-            '}' => self.add_token(TokenType::RightBrace, tokens),
-            ',' => self.add_token(TokenType::Comma, tokens),
-            '.' => self.add_token(TokenType::Dot, tokens),
-            '_' => self.add_token(TokenType::Minus, tokens),
-            '+' => self.add_token(TokenType::Plus, tokens),
-            ';' => self.add_token(TokenType::Semicolon, tokens),
-            '*' => self.add_token(TokenType::Star, tokens),
-            '"' => {
-                let string_token = self.get_string_token();
-                self.add_token(string_token, tokens);
-            },
+            '(' => ScanningResult::Token(TokenType::LeftParen),
+            ')' => ScanningResult::Token(TokenType::RightParen),
+            '{' => ScanningResult::Token(TokenType::LeftBrace),
+            '}' => ScanningResult::Token(TokenType::RightBrace),
+            ',' => ScanningResult::Token(TokenType::Comma),
+            '.' => ScanningResult::Token(TokenType::Dot),
+            '_' => ScanningResult::Token(TokenType::Minus),
+            '+' => ScanningResult::Token(TokenType::Plus),
+            ';' => ScanningResult::Token(TokenType::Semicolon),
+            '*' => ScanningResult::Token(TokenType::Star),
+            '"' => ScanningResult::Token(self.get_string_token()),
             '!' => {
-                let token = if self.match_char('=') {
-                    TokenType::BangEqual
+                return if self.match_char('=') {
+                    ScanningResult::Token(TokenType::BangEqual)
                 } else {
-                    TokenType::Bang
+                    ScanningResult::Token(TokenType::Bang)
                 };
-                self.add_token(token, tokens);
             },
             '=' => {
-                let token = if self.match_char('=') {
-                    TokenType::EqualEqual
+                return if self.match_char('=') {
+                    ScanningResult::Token(TokenType::EqualEqual)
                 } else {
-                    TokenType::Equal
+                    ScanningResult::Token(TokenType::Equal)
                 };
-                self.add_token(token, tokens); 
             },
             '<' => {
-                let token = if self.match_char('=') {
-                    TokenType::LessEqual
+                return if self.match_char('=') {
+                    ScanningResult::Token(TokenType::LessEqual)
                 } else {
-                    TokenType::Less
+                    ScanningResult::Token(TokenType::Less)
                 };
-                self.add_token(token, tokens);
             },
             '>' => {
-                let token = if self.match_char('=') {
-                    TokenType::GreaterEqual
+                return if self.match_char('=') {
+                    ScanningResult::Token(TokenType::GreaterEqual)
                 } else {
-                    TokenType::Greater
+                    ScanningResult::Token(TokenType::Greater)
                 };
-                self.add_token(token, tokens);
             },
-            '/' => {
-                if self.match_char('/') {
-                    while self.peek() != '\n' && !self.is_at_end() {
-                        self.advance();
-                    }
-                } else {
-                    self.add_token(TokenType::Slash, tokens);
-                }
-            },
-            ' ' => (),
-            '\r' => (),
-            '\t' => (),
-            '\n' => self.line = self.line + 1,
+            '/' => return self.get_comments(),
+            ' ' | '\r' | '\t'  => ScanningResult::Skip,
+            '\n' => ScanningResult::NewLine,
             _ => {
                 if self.is_digit(char) {
                     let number_token = self.number();
-                    self.add_token(number_token, tokens);
+                    ScanningResult::Token(number_token)
                 } else if self.is_alpha(char) {
                     let token = self.identifire();
-                    self.add_token(token, tokens);
+                    ScanningResult::Token(token)
                 } else {
-                    () // dopisać tu obsługe błędów
+                    ScanningResult::Error(ScannerError::UnrecognizedChar(char, self.line))
                 }
             }
         }
     }
 
-    fn create_token(&self, token_type: TokenType) -> Token {
-        let text = self.source[self.start..self.current].to_string();
-        Token::new(token_type, Some(text), self.line)
-    }
 
     fn add_token(&self, token_type: TokenType, tokens: &mut Vec<Token>) {
         let text = self.source[self.start..self.current].to_string();
@@ -140,6 +131,17 @@ impl<'a> Scanner<'a> {
     fn peek(&self) -> char {
         if self.is_at_end() { return '\0' }
         return self.source.chars().nth(self.current).unwrap();
+    }
+
+    fn get_comments(&mut self) -> ScanningResult {
+        if self.match_char('/') {
+            while self.peek() != '\n' && !self.is_at_end() {
+                self.advance();
+            }
+            return ScanningResult::Skip;
+        } else {
+            return ScanningResult::Token(TokenType::Slash);
+        }
     }
 
     fn get_string_token(&mut self) -> TokenType {
@@ -193,7 +195,8 @@ impl<'a> Scanner<'a> {
         while self.is_digit(self.peek()) {
             self.advance();
         }
-        if self.peek() == '.' && self.is_digit(self.peek_next()) {
+        let next_peek_char = &self.peek_next();
+        if self.peek() == '.' && self.is_digit(*next_peek_char) {
             self.advance();
 
             while self.is_digit(self.peek()) {
@@ -206,14 +209,23 @@ impl<'a> Scanner<'a> {
     }
 }
 
-#[derive(Debug)]
-pub struct ScannerError {
-    source: char,
+enum ScanningResult {
+    Skip,
+    NewLine,
+    Token(TokenType),
+    Error(ScannerError)
 }
 
-impl Error for ScannerError {}
+#[derive(Debug)]
+pub enum ScannerError {
+    UnrecognizedChar(char, usize)
+}
+
 impl Display for ScannerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} has something wrong", self.source)
+        match self {
+            ScannerError::UnrecognizedChar(char, line) => write!(f, "Unrecognize char {} at line {}", char, line)
+        }
     }
 }
+impl Error for ScannerError {}
